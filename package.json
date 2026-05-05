@@ -1,14 +1,35 @@
 {
   "name": "hmaf",
   "version": "0.1.0",
-  "description": "Hybrid Multi-Agent Framework — install into any project",
+  "description": "Hybrid Multi-Agent Framework — voice, team agents, and model routing for any Claude Code project",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "hmaf": "./dist/cli/init.js"
   },
+  "files": [
+    "dist/",
+    ".claude/commands/hmaf.md",
+    ".claude/commands/session-end.md",
+    ".claude/hooks/",
+    "HMAF.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "claude",
+    "ai-agent",
+    "multi-agent",
+    "voice",
+    "model-router",
+    "anthropic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anhdt14/hmaf"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-templates.mjs",
     "voice": "tsx src/voice/session.ts",
     "route": "tsx src/router/model-router.ts",
     "init": "tsx src/cli/init.ts",

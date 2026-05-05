@@ -91,18 +91,7 @@ async function main() {
 
   console.log("\n   Mở Claude Code → gõ /hmaf để chọn session mode\n");
 
-  // Copy hooks if needed
-  printHookNote(targetDir);
-
   close();
-}
-
-function printHookNote(targetDir: string): void {
-  const hooksExist = existsSync(`${targetDir}/.claude/hooks/session-init.cjs`);
-  if (!hooksExist) {
-    console.log("ℹ  Hooks chưa được copy. Chạy lệnh sau để copy hooks từ HMAF:\n");
-    console.log("   cp -r <hmaf-path>/.claude/hooks .claude/hooks\n");
-  }
 }
 
 main().catch((err) => {

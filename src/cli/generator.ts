@@ -2,7 +2,7 @@
  * File generator — creates HMAF config files in the target project.
  */
 
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync, copyFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,9 +65,14 @@ export function generate(opts: GenerateOptions): string[] {
   // 3. .claude/settings.json — merge HMAF hooks, never overwrite existing config
   mergeSettings(targetDir, modules, created);
 
-  // 4. .claude/commands/hmaf.md — always write (this is HMAF's slash command)
+  // 4. .claude/commands/ — always write HMAF slash commands
   const hmafCmd = readFile(join(__dir, "../../.claude/commands/hmaf.md"));
   if (hmafCmd) write(targetDir, ".claude/commands/hmaf.md", hmafCmd, created);
+  const sessionEndCmd = readFile(join(__dir, "../../.claude/commands/session-end.md"));
+  if (sessionEndCmd) write(targetDir, ".claude/commands/session-end.md", sessionEndCmd, created);
+
+  // 4b. .claude/hooks/ — copy hook scripts
+  copyHooks(targetDir, created);
 
   // 5. .env.example — skip if project already has one
   write(targetDir, ".env.example", buildEnvExample(modules), created, { skipIfExists: true });
@@ -299,6 +304,20 @@ function getAgentName(stack: Stack): string {
     general:           "developer",
   };
   return map[stack];
+}
+
+function copyHooks(targetDir: string, created: string[]): void {
+  const hooksSource = join(__dir, "../../.claude/hooks");
+  const hooksDest = join(targetDir, ".claude/hooks");
+  mkdirSync(hooksDest, { recursive: true });
+  for (const file of ["session-init.cjs", "scout-block.cjs"]) {
+    const src = join(hooksSource, file);
+    const dest = join(hooksDest, file);
+    if (existsSync(src)) {
+      copyFileSync(src, dest);
+      created.push(`.claude/hooks/${file}`);
+    }
+  }
 }
 
 function write(
