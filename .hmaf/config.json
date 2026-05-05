@@ -12,11 +12,11 @@
     "research":     "claude-sonnet",
     "planning":     "claude-sonnet",
     "review":       "claude-sonnet",
-    "ios-code":     "deepseek-v3",
-    "backend-code": "qwen-plus",
-    "web-code":     "qwen-plus",
-    "devops":       "qwen-plus",
-    "simple-fix":   "deepseek-v3",
+    "ios-code":     "gemini-flash",
+    "backend-code": "gemini-flash",
+    "web-code":     "gemini-flash",
+    "devops":       "gemini-flash",
+    "simple-fix":   "gemini-flash",
     "unknown":      "claude-sonnet"
   },
   "providers": {
@@ -26,19 +26,12 @@
       "costPer1MInput":  3.0,
       "costPer1MOutput": 15.0
     },
-    "deepseek-v3": {
-      "model":   "deepseek-chat",
-      "baseUrl": "https://api.deepseek.com",
-      "envKey":  "DEEPSEEK_API_KEY",
-      "costPer1MInput":  0.27,
-      "costPer1MOutput": 1.1
-    },
-    "qwen-plus": {
-      "model":   "qwen-plus",
-      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "envKey":  "QWEN_API_KEY",
-      "costPer1MInput":  0.4,
-      "costPer1MOutput": 1.2
+    "gemini-flash": {
+      "model":   "gemini-2.5-flash-preview-05-20",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "envKey":  "GEMINI_API_KEY",
+      "costPer1MInput":  0.075,
+      "costPer1MOutput": 0.30
     }
   },
   "teams": {
