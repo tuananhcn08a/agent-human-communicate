@@ -10,6 +10,7 @@
  * If a provider key is missing, the task is skipped with a clear message.
  */
 
+import "dotenv/config";
 import OpenAI from "openai";
 import { z } from "zod";
 import { classifyTask } from "./task-classifier.js";
