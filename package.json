@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "hmaf": "./dist/cli/init.js"
+    "hmaf": "dist/cli/init.js"
   },
   "files": [
     "dist/",
@@ -26,10 +26,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/anhdt14/hmaf"
+    "url": "git+https://github.com/anhdt14/hmaf.git"
   },
   "scripts": {
-    "build": "tsc && node scripts/copy-templates.mjs",
+    "build": "tsc && node scripts/copy-templates.mjs && chmod +x dist/cli/init.js",
     "voice": "tsx src/voice/session.ts",
     "route": "tsx src/router/model-router.ts",
     "init": "tsx src/cli/init.ts",
