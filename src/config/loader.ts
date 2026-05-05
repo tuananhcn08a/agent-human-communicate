@@ -46,6 +46,7 @@ const HmafConfigSchema = z.object({
     },
   }),
   teams: z.object({
+    executor: z.enum(["claude-task", "subprocess"]).default("claude-task"),
     debateRounds: z.number().default(2),
     pauseBetweenRounds: z.boolean().default(true),
     outputDir: z.string().default("docs/03-session-state/team-debates"),

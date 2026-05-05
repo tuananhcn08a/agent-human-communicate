@@ -29,11 +29,13 @@
 - [x] session-init hook cập nhật — hiển thị mode hint + context
 - [x] Mode được lưu vào session-state sau khi chọn (trong /hmaf command)
 
-### Wave 4: Team Agents Protocol
-- [ ] Thiết kế debate protocol (round-based)
-- [ ] Real-time stream output khi agents debate
-- [ ] Pause + user intervention point sau mỗi round
-- [ ] File-based communication: `docs/03-session-state/team-debates/`
+### Wave 4: Team Agents Protocol ✅ DONE
+- [x] ADR-005 — executor strategy (ClaudeTask phase 1, Subprocess phase 2)
+- [x] `src/agents/executor.ts` — AgentExecutor interface + AgentDefinition types
+- [x] `src/agents/claude-task-executor.ts` — Phase 1 implementation (file-based)
+- [x] `src/agents/subprocess-executor.ts` — Phase 2 stub (future)
+- [x] `src/agents/debate-runner.ts` — round orchestration, intervention point, file output
+- [x] Config: `teams.executor` field trong .hmaf/config.json
 
 ### Wave 5: `npx hmaf init` Wizard
 - [ ] CLI wizard với prompts

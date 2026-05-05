@@ -42,6 +42,7 @@
     }
   },
   "teams": {
+    "executor": "claude-task",
     "debateRounds": 2,
     "pauseBetweenRounds": true,
     "outputDir": "docs/03-session-state/team-debates"
