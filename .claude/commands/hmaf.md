@@ -5,7 +5,9 @@ Khi người dùng gọi `/hmaf`, thực hiện các bước sau:
 ## Bước 1: Đọc config và state hiện tại
 
 Đọc `.hmaf/config.json` để biết modules nào được bật.  
-Đọc `docs/03-session-state/latest.md` để biết mode session trước đã chọn (nếu có).
+Đọc session state theo thứ tự ưu tiên:
+1. `.hmaf/session.json` — installed project mode (ưu tiên)
+2. `docs/03-session-state/latest.md` — HMAF dev mode (fallback)
 
 ## Bước 2: Hiển thị menu
 
@@ -48,18 +50,24 @@ Nếu người dùng mô tả task → đề xuất agents phù hợp từ `.cla
 Không ép buộc — Teams chỉ được kích hoạt khi có task cụ thể
 
 ### Nếu Router được chọn:
-Kiểm tra các env keys: `DEEPSEEK_API_KEY`, `QWEN_API_KEY`  
+Đọc `.hmaf/config.json` → lấy danh sách providers → kiểm tra env key tương ứng của từng provider.  
 - Thiếu key nào → thông báo provider đó sẽ fallback về Claude Sonnet  
-- Đủ key → xác nhận routing table từ `.hmaf/config.json`
+- Đủ key → xác nhận routing table (task category → model mapping)
 
 ## Bước 5: Lưu mode đã chọn
 
-Cập nhật section "Active mode" trong `docs/03-session-state/latest.md`:
-
-```markdown
-## Active Mode — [date]
-Modules: [danh sách module bật]
-```
+Lưu theo context:
+- **Nếu `.hmaf/config.json` tồn tại mà KHÔNG có `docs/03-session-state/`** (installed mode):  
+  Ghi vào `.hmaf/session.json`:
+  ```json
+  { "activeMode": "[tên mode]", "modules": ["list"], "date": "[date]" }
+  ```
+- **Nếu `docs/03-session-state/latest.md` tồn tại** (HMAF dev mode):  
+  Append vào file đó:
+  ```markdown
+  ## Active Mode — [date]
+  Modules: [danh sách module bật]
+  ```
 
 ## Bước 6: Tóm tắt
 

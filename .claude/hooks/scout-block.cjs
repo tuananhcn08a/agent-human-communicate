@@ -18,7 +18,11 @@ const toolInput = input?.tool_input ?? {};
 const target =
   toolInput.command ?? toolInput.path ?? toolInput.pattern ?? "";
 
-const blocked = BLOCKED_DIRS.some((dir) => target.includes(`/${dir}/`) || target.includes(`/${dir}`));
+// Match dir as path segment: /dir, /dir/, dir/ at start, or preceded by space/tab
+const blocked = BLOCKED_DIRS.some((dir) => {
+  const re = new RegExp(`(^|[/\\s])${dir}([/\\s]|$)`);
+  return re.test(target);
+});
 
 if (blocked) {
   console.error(`[scout-block] Blocked access to: ${target}`);

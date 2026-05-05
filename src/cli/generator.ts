@@ -48,30 +48,29 @@ export function generate(opts: GenerateOptions): string[] {
   const { projectName, stacks, modules, targetDir } = opts;
   const created: string[] = [];
 
-  // 1. .hmaf/config.json
-  write(targetDir, ".hmaf/config.json", buildConfig(projectName, modules), created);
+  // 1. .hmaf/config.json — skip if project already configured
+  write(targetDir, ".hmaf/config.json", buildConfig(projectName, modules), created, { skipIfExists: true });
 
-  // 2. .claude/agents/*.md — one per stack
+  // 2. .claude/agents/*.md — skip if project already has its own agent definitions
   for (const stack of stacks) {
     const agentFile = readTemplate(`agents/${stack}.md`).replace(/{{project}}/g, projectName);
     const agentName = getAgentName(stack);
-    write(targetDir, `.claude/agents/${agentName}.md`, agentFile, created);
+    write(targetDir, `.claude/agents/${agentName}.md`, agentFile, created, { skipIfExists: true });
   }
 
-  // Always add scrum-master
+  // Always add scrum-master (HMAF-specific, won't conflict with project agents)
   const smTemplate = readBuiltinScrumMaster(projectName);
-  write(targetDir, ".claude/agents/scrum-master.md", smTemplate, created);
-  created.push("  (scrum-master always included)");
+  write(targetDir, ".claude/agents/scrum-master.md", smTemplate, created, { skipIfExists: true });
 
-  // 3. .claude/settings.json
-  write(targetDir, ".claude/settings.json", buildSettings(modules), created);
+  // 3. .claude/settings.json — merge HMAF hooks, never overwrite existing config
+  mergeSettings(targetDir, modules, created);
 
-  // 4. .claude/commands/hmaf.md — copy the slash command
+  // 4. .claude/commands/hmaf.md — always write (this is HMAF's slash command)
   const hmafCmd = readFile(join(__dir, "../../.claude/commands/hmaf.md"));
   if (hmafCmd) write(targetDir, ".claude/commands/hmaf.md", hmafCmd, created);
 
-  // 5. .env.example
-  write(targetDir, ".env.example", buildEnvExample(modules), created);
+  // 5. .env.example — skip if project already has one
+  write(targetDir, ".env.example", buildEnvExample(modules), created, { skipIfExists: true });
 
   // 6. Append HMAF section to CLAUDE.md (or create stub if missing)
   appendClaudeMd(targetDir, projectName, modules, stacks, created);
@@ -302,11 +301,54 @@ function getAgentName(stack: Stack): string {
   return map[stack];
 }
 
-function write(targetDir: string, relPath: string, content: string, created: string[]): void {
+function write(
+  targetDir: string,
+  relPath: string,
+  content: string,
+  created: string[],
+  opts: { skipIfExists?: boolean } = {},
+): void {
   const fullPath = join(targetDir, relPath);
+  if (opts.skipIfExists && existsSync(fullPath)) {
+    created.push(`${relPath} (skipped — already exists)`);
+    return;
+  }
   mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, content, "utf8");
   created.push(relPath);
+}
+
+function mergeSettings(targetDir: string, modules: Module[], created: string[]): void {
+  const settingsPath = join(targetDir, ".claude/settings.json");
+  const hmafHooks = JSON.parse(buildSettings(modules)) as { hooks: Record<string, unknown[]> };
+
+  let existing: { hooks?: Record<string, unknown[]> } = {};
+  if (existsSync(settingsPath)) {
+    try { existing = JSON.parse(readFileSync(settingsPath, "utf8")); } catch { /* malformed — replace */ }
+  }
+
+  const merged = { ...existing, hooks: { ...(existing.hooks ?? {}) } };
+  for (const [event, hookList] of Object.entries(hmafHooks.hooks)) {
+    if (!merged.hooks[event]) {
+      merged.hooks[event] = hookList;
+    } else {
+      // Add only hooks whose command isn't already present
+      const existingCmds = new Set(
+        (merged.hooks[event] as Array<{ hooks?: Array<{ command?: string }> }>)
+          .flatMap((h) => (h.hooks ?? []).map((hh) => hh.command ?? "")),
+      );
+      for (const entry of hookList as Array<{ hooks?: Array<{ command?: string }> }>) {
+        const cmds = (entry.hooks ?? []).map((hh) => hh.command ?? "");
+        if (cmds.some((c) => !existingCmds.has(c))) {
+          (merged.hooks[event] as unknown[]).push(entry);
+        }
+      }
+    }
+  }
+
+  mkdirSync(dirname(settingsPath), { recursive: true });
+  writeFileSync(settingsPath, JSON.stringify(merged, null, 2), "utf8");
+  created.push(".claude/settings.json (merged HMAF hooks)");
 }
 
 export { STACK_LABELS };
