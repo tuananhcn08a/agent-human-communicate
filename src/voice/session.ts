@@ -44,7 +44,7 @@ async function runVoiceSession() {
       });
 
       const responseText = result.content;
-      console.log(`\n[agent → ${result.provider}] ${responseText}\n`);
+      console.log(`\n[agent → ${result.providerId}] ${responseText}\n`);
 
       const speakable = extractSpeakable(responseText);
       await speak(speakable);

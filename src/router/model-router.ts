@@ -1,18 +1,16 @@
 /**
  * Dynamic Model Router — routes tasks to the cheapest capable provider.
  *
- * Decision logic:
- *   1. Classify task category from prompt keywords
- *   2. Look up preferred provider from ROUTING_TABLE
- *   3. Verify provider's API key is available; fallback to claude-sonnet
- *   4. Execute, track token usage & cost
+ * Provider config and routing table come from .hmaf/config.json,
+ * making this fully project-agnostic.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { z } from "zod";
 import { classifyTask } from "./task-classifier.js";
-import { PROVIDERS, ROUTING_TABLE, type TaskCategory } from "./providers.js";
+import { loadConfig, getRoutedProvider } from "../config/loader.js";
+import type { TaskCategory } from "./providers.js";
 
 const RouteRequestSchema = z.object({
   prompt: z.string().min(1),
@@ -26,7 +24,7 @@ export type RouteRequest = z.infer<typeof RouteRequestSchema>;
 
 export interface RouteResult {
   content: string;
-  provider: string;
+  providerId: string;
   model: string;
   category: TaskCategory;
   confidence: number;
@@ -38,12 +36,8 @@ const anthropicClient = new Anthropic({
   apiKey: process.env["ANTHROPIC_API_KEY"] ?? "",
 });
 
-function buildOpenAICompatClient(baseUrl: string, apiKey: string) {
+function openaiCompatClient(baseUrl: string, apiKey: string) {
   return new OpenAI({ baseURL: baseUrl, apiKey });
-}
-
-function getApiKey(envKey: string): string | undefined {
-  return process.env[envKey];
 }
 
 async function callAnthropic(
@@ -64,11 +58,7 @@ async function callAnthropic(
     .map((b) => (b as { type: "text"; text: string }).text)
     .join("");
 
-  return {
-    content,
-    inputTokens: resp.usage.input_tokens,
-    outputTokens: resp.usage.output_tokens,
-  };
+  return { content, inputTokens: resp.usage.input_tokens, outputTokens: resp.usage.output_tokens };
 }
 
 async function callOpenAICompat(
@@ -87,9 +77,8 @@ async function callOpenAICompat(
     ],
   });
 
-  const choice = resp.choices[0];
   return {
-    content: choice?.message.content ?? "",
+    content: resp.choices[0]?.message.content ?? "",
     inputTokens: resp.usage?.prompt_tokens ?? 0,
     outputTokens: resp.usage?.completion_tokens ?? 0,
   };
@@ -97,38 +86,45 @@ async function callOpenAICompat(
 
 export async function route(request: RouteRequest): Promise<RouteResult> {
   const { prompt, systemPrompt = "", maxTokens, forceCategory } = RouteRequestSchema.parse(request);
+  const config = loadConfig();
 
   const { category, confidence } = forceCategory
     ? { category: forceCategory as TaskCategory, confidence: 1 }
     : classifyTask(prompt);
 
-  const preferredProviderId = ROUTING_TABLE[category];
-  const preferredProvider = PROVIDERS[preferredProviderId];
+  const provider = getRoutedProvider(config, category);
+  const apiKey = process.env[provider.envKey] ?? "";
 
-  // Fallback to claude-sonnet if provider key is missing
-  const apiKey = getApiKey(preferredProvider?.envKey ?? "");
-  const provider = apiKey && preferredProvider ? preferredProvider : PROVIDERS["claude-sonnet"]!;
-  const resolvedApiKey = apiKey ?? getApiKey(provider.envKey) ?? "";
+  // Fallback to claude-sonnet if target provider has no key
+  const useProvider = apiKey
+    ? provider
+    : (config.providers["claude-sonnet"] ?? provider);
+  const resolvedKey = (apiKey || process.env["ANTHROPIC_API_KEY"]) ?? "";
+  const providerId = apiKey ? (config.routing[category] ?? "claude-sonnet") : "claude-sonnet";
 
   let result: { content: string; inputTokens: number; outputTokens: number };
 
-  if (provider.id === "claude-sonnet") {
-    result = await callAnthropic(provider.model, systemPrompt, prompt, maxTokens);
+  if (!useProvider.baseUrl) {
+    result = await callAnthropic(useProvider.model, systemPrompt, prompt, maxTokens);
   } else {
-    const client = buildOpenAICompatClient(provider.baseUrl!, resolvedApiKey);
-    result = await callOpenAICompat(client, provider.model, systemPrompt, prompt, maxTokens);
+    const client = openaiCompatClient(useProvider.baseUrl, resolvedKey);
+    result = await callOpenAICompat(client, useProvider.model, systemPrompt, prompt, maxTokens);
   }
 
   const estimatedCostUSD =
-    (result.inputTokens / 1_000_000) * provider.costPer1MInput +
-    (result.outputTokens / 1_000_000) * provider.costPer1MOutput;
+    (result.inputTokens / 1_000_000) * useProvider.costPer1MInput +
+    (result.outputTokens / 1_000_000) * useProvider.costPer1MOutput;
 
-  logRoute({ category, confidence, provider: provider.id, model: provider.model, estimatedCostUSD });
+  if ((process.env["HMAF_LOG_LEVEL"] ?? "info") !== "silent") {
+    console.log(
+      `[router] ${category} (${(confidence * 100).toFixed(0)}%) → ${providerId} (${useProvider.model}) ~$${estimatedCostUSD.toFixed(5)}`,
+    );
+  }
 
   return {
     content: result.content,
-    provider: provider.id,
-    model: provider.model,
+    providerId,
+    model: useProvider.model,
     category,
     confidence,
     tokensUsed: { input: result.inputTokens, output: result.outputTokens },
@@ -136,32 +132,15 @@ export async function route(request: RouteRequest): Promise<RouteResult> {
   };
 }
 
-function logRoute(info: {
-  category: TaskCategory;
-  confidence: number;
-  provider: string;
-  model: string;
-  estimatedCostUSD: number;
-}) {
-  const logLevel = process.env["HMAF_LOG_LEVEL"] ?? "info";
-  if (logLevel === "silent") return;
-  console.log(
-    `[router] category=${info.category} confidence=${(info.confidence * 100).toFixed(0)}% ` +
-      `→ ${info.provider} (${info.model}) ~$${info.estimatedCostUSD.toFixed(5)}`,
-  );
-}
-
-// CLI usage: tsx src/router/model-router.ts "your prompt here"
+// CLI: tsx src/router/model-router.ts "your prompt"
 if (import.meta.url === `file://${process.argv[1]}`) {
   const prompt = process.argv.slice(2).join(" ");
-  if (!prompt) {
-    console.error("Usage: tsx src/router/model-router.ts <prompt>");
-    process.exit(1);
-  }
+  if (!prompt) { console.error("Usage: tsx src/router/model-router.ts <prompt>"); process.exit(1); }
 
-  route({ prompt, maxTokens: 2048, stream: false }).then((result) => {
-    console.log("\n--- Response ---");
-    console.log(result.content);
-    console.log(`\n[cost] $${result.estimatedCostUSD.toFixed(5)} | tokens in=${result.tokensUsed.input} out=${result.tokensUsed.output}`);
-  }).catch(console.error);
+  route({ prompt, maxTokens: 2048, stream: false })
+    .then((r) => {
+      console.log("\n--- Response ---\n" + r.content);
+      console.log(`\n[cost] $${r.estimatedCostUSD.toFixed(5)} | in=${r.tokensUsed.input} out=${r.tokensUsed.output}`);
+    })
+    .catch(console.error);
 }

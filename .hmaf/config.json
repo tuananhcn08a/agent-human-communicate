@@ -1,0 +1,57 @@
+{
+  "project": "hmaf",
+  "version": "0.1.0",
+  "modules": {
+    "voice": true,
+    "teams": true,
+    "router": true
+  },
+  "sessionPrompt": true,
+  "routing": {
+    "architecture": "claude-sonnet",
+    "research":     "claude-sonnet",
+    "planning":     "claude-sonnet",
+    "review":       "claude-sonnet",
+    "ios-code":     "deepseek-v3",
+    "backend-code": "qwen-plus",
+    "web-code":     "qwen-plus",
+    "devops":       "qwen-plus",
+    "simple-fix":   "deepseek-v3",
+    "unknown":      "claude-sonnet"
+  },
+  "providers": {
+    "claude-sonnet": {
+      "model":   "claude-sonnet-4-6",
+      "envKey":  "ANTHROPIC_API_KEY",
+      "costPer1MInput":  3.0,
+      "costPer1MOutput": 15.0
+    },
+    "deepseek-v3": {
+      "model":   "deepseek-chat",
+      "baseUrl": "https://api.deepseek.com",
+      "envKey":  "DEEPSEEK_API_KEY",
+      "costPer1MInput":  0.27,
+      "costPer1MOutput": 1.1
+    },
+    "qwen-plus": {
+      "model":   "qwen-plus",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "envKey":  "QWEN_API_KEY",
+      "costPer1MInput":  0.4,
+      "costPer1MOutput": 1.2
+    }
+  },
+  "teams": {
+    "debateRounds": 2,
+    "pauseBetweenRounds": true,
+    "outputDir": "docs/03-session-state/team-debates"
+  },
+  "gate": {
+    "mode": "smart"
+  },
+  "voice": {
+    "sttProvider": "soniox",
+    "ttsProvider": "macos",
+    "language": "vi"
+  }
+}

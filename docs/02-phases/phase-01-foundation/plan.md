@@ -8,24 +8,26 @@
 
 ## Tasks
 
-### Wave 1: Project Setup (nền tảng trước khi code) ← ĐANG LÀM
+### Wave 1: Project Setup ✅ DONE
 - [x] Phân tích ClaudeKit — extract patterns hữu ích
 - [x] Phân tích bap-bean-book — hiểu ecosystem, conventions
 - [x] Viết CLAUDE.md — session protocol, quy tắc dự án
 - [x] Viết ADR-001 đến ADR-004 — ghi lại 4 quyết định kiến trúc chính
 - [x] Viết architecture.md — thiết kế chi tiết hệ thống
 - [x] Tạo phase tracking (file này)
-- [ ] Viết session-state/latest.md — context persistence
+- [x] Viết session-state/latest.md — context persistence
 
-### Wave 2: Refactor code hiện tại
-- [ ] Xóa references đến bap-bean-book trong src/
-- [ ] Làm Model Router generic (routing table từ config file)
-- [ ] Tách providers thành configurable — không hardcode
+### Wave 2: Refactor code hiện tại ✅ DONE
+- [x] Xóa references đến bap-bean-book trong session-init.cjs
+- [x] Tạo `.hmaf/config.json` — config tập trung cho toàn framework
+- [x] Tạo `src/config/loader.ts` — Zod-validated config loader
+- [x] Refactor Model Router dùng config (không hardcode provider nữa)
+- [x] session-init.cjs generic — hoạt động cả HMAF dev mode lẫn installed mode
 
-### Wave 3: Session Mode Selection
-- [ ] SessionStart hook — hiện mode selection prompt
-- [ ] `/hmaf` slash command — switch mode bất kỳ lúc nào
-- [ ] Lưu mode đã chọn vào session-state
+### Wave 3: Session Mode Selection ✅ DONE
+- [x] `/hmaf` slash command — `.claude/commands/hmaf.md`
+- [x] session-init hook cập nhật — hiển thị mode hint + context
+- [x] Mode được lưu vào session-state sau khi chọn (trong /hmaf command)
 
 ### Wave 4: Team Agents Protocol
 - [ ] Thiết kế debate protocol (round-based)

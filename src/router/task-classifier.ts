@@ -9,6 +9,8 @@ const SIGNALS: Record<TaskCategory, ClassificationSignal[]> = {
   architecture: [
     { keywords: ["adr", "architecture", "design pattern", "trade-off", "decision", "scalab"], weight: 3 },
     { keywords: ["diagram", "blueprint", "system", "infra", "database schema"], weight: 2 },
+    // Comparative/evaluative questions about tech choices belong here
+    { keywords: ["should we use", "which is better", "vs ", "or postgres", "or sqlite", "or mysql"], weight: 3 },
   ],
   research: [
     { keywords: ["research", "investigate", "compare", "evaluate", "spike", "explore", "find out"], weight: 3 },

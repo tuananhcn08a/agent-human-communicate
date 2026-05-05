@@ -1,51 +1,57 @@
 # Session State — Latest
 
-**Session date:** 2026-05-05  
+**Session date:** 2026-05-05 (session 2)  
 **Người làm:** Tuan Anh + Claude Sonnet 4.6
 
 ---
 
 ## Completed this session
 
-- Phân tích ClaudeKit (docs/references/claudekit-engineer-main) — extract patterns
-- Phân tích bap-bean-book codebase — hiểu stack, conventions, agent setup
-- Scaffold ban đầu: src/router/, src/voice/, src/gate/ — TypeScript clean
-- Viết CLAUDE.md, architecture.md, 4 ADRs, phase plan
-- Đã fix: @types/mic không tồn tại → dùng custom .d.ts
-- Đã fix: soniox không có npm package → implement WebSocket trực tiếp
-- Đã fix: TypeScript type errors → clean build
+**Wave 1 — Docs & Foundation:**
+- CLAUDE.md, architecture.md, 4 ADRs, phase plan, session-state protocol
 
-## In-progress (chưa xong)
+**Wave 2 — Refactor (generic):**
+- `.hmaf/config.json` — config tập trung, Zod-validated
+- `src/config/loader.ts` — load + merge config, fallback về defaults
+- `src/router/providers.ts` — đơn giản hóa, chỉ giữ TaskCategory type
+- `src/router/model-router.ts` — fully generic, đọc routing từ config
+- `.claude/hooks/session-init.cjs` — generic, không còn hardcode bap-bean-book
 
-- **Refactor Model Router** — hiện còn reference bap-bean-book trong session-init.cjs
-- **Session Mode Selection** — chưa implement hook + slash command
-- **Team Agents Protocol** — chưa implement
+**Wave 3 — Session Mode Selection:**
+- `.claude/commands/hmaf.md` — `/hmaf` slash command đầy đủ
 
-## Next session priority
+## In-progress / Next
 
-1. **Wave 2: Refactor** — xóa bap-bean-book references, làm Router generic
-2. **Wave 3: Session Mode Selection** — hook + /hmaf command
-3. Sau đó mới sang Wave 4 (Team Agents)
+**Wave 4: Team Agents Protocol** ← TIẾP THEO
+- [ ] `src/agents/team-session.ts` — coordinator cho debate round
+- [ ] `src/agents/debate-runner.ts` — spawn agents, collect responses, pause
+- [ ] File output: `docs/03-session-state/team-debates/{date}-{topic}/`
+- [ ] Integration với `/hmaf teams` command
 
-## Open questions cần quyết định
+**Wave 5: `npx hmaf init` Wizard** ← SAU WAVE 4
+- [ ] `src/cli/init.ts` — interactive wizard
+- [ ] Templates trong `src/cli/templates/`
 
-1. Team Agents: dùng Claude Code `Task` tool (native) hay spawn subprocess riêng?
-   - Native Task tool: tích hợp tốt với Claude Code, nhưng bị giới hạn bởi Claude Code API
-   - Subprocess: flexible hơn, nhưng phải quản lý lifecycle
-   
-2. `/hmaf` slash command: implement như ClaudeKit SKILL.md hay dùng Claude Code commands/?
+## Open questions (carried from session 1)
 
-## Key architectural decisions (xem ADRs để biết lý do)
+1. **Team Agents implementation:** Dùng Claude Code native `Task` tool hay spawn subprocess?
+   - Native Task: tích hợp tốt, nhưng phụ thuộc Claude Code API
+   - Subprocess (tsx): portable hơn, nhưng phải quản lý lifecycle
+   - **Recommendation:** Native Task tool trước (simpler), fallback subprocess nếu cần
 
-- Generic framework (ADR-001)
-- Hook + command cả hai (ADR-002)
-- Real-time + intervention (ADR-003)
-- npx hmaf init (ADR-004)
+2. **`npx hmaf init`:** Publish npm hay local first?
+   - **Recommendation:** Local script (`./scripts/init.ts`) trước, npm sau khi ổn định
 
-## Code state
+## Codebase state
 
-- TypeScript: ✅ clean, 0 errors
-- Task classifier: ✅ hoạt động, đã test
-- Voice: ✅ code xong, chưa test thật (cần SONIOX_API_KEY)
-- Model Router: ✅ code xong, cần refactor để generic
-- Human Gate: ✅ code xong
+- TypeScript: ✅ clean 0 errors
+- `src/config/loader.ts`: ✅ Zod schema, load từ .hmaf/config.json
+- `src/router/`: ✅ generic, đọc từ config
+- `src/voice/`: ✅ code xong, chưa test thật (cần SONIOX_API_KEY)
+- `src/gate/`: ✅ xong
+- `.claude/commands/hmaf.md`: ✅ slash command đầy đủ
+- `.hmaf/config.json`: ✅ default config cho HMAF project
+
+## Active mode
+
+Modules: Standard (chưa chọn mode cho session này)
