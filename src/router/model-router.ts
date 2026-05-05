@@ -1,11 +1,15 @@
 /**
- * Dynamic Model Router — routes tasks to the cheapest capable provider.
+ * Dynamic Model Router — routes code tasks to cheaper providers (Gemini, etc.)
  *
- * Provider config and routing table come from .hmaf/config.json,
- * making this fully project-agnostic.
+ * Design reality:
+ *   - Architecture/planning/review tasks → handled by Claude Code directly (subscription)
+ *   - Code tasks (ios, backend, web, simple-fix) → routed here to Gemini
+ *
+ * ANTHROPIC_API_KEY is NOT required. Router only needs keys for
+ * providers configured in .hmaf/config.json (e.g. GEMINI_API_KEY).
+ * If a provider key is missing, the task is skipped with a clear message.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { z } from "zod";
 import { classifyTask } from "./task-classifier.js";
@@ -30,35 +34,12 @@ export interface RouteResult {
   confidence: number;
   tokensUsed: { input: number; output: number };
   estimatedCostUSD: number;
+  skipped?: boolean;   // true when no API key available — use Claude Code directly
+  skipReason?: string;
 }
-
-const anthropicClient = new Anthropic({
-  apiKey: process.env["ANTHROPIC_API_KEY"] ?? "",
-});
 
 function openaiCompatClient(baseUrl: string, apiKey: string) {
   return new OpenAI({ baseURL: baseUrl, apiKey });
-}
-
-async function callAnthropic(
-  model: string,
-  system: string,
-  prompt: string,
-  maxTokens: number,
-): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
-  const resp = await anthropicClient.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = resp.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("");
-
-  return { content, inputTokens: resp.usage.input_tokens, outputTokens: resp.usage.output_tokens };
 }
 
 async function callOpenAICompat(
@@ -72,8 +53,8 @@ async function callOpenAICompat(
     model,
     max_tokens: maxTokens,
     messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
+      ...(system ? [{ role: "system" as const, content: system }] : []),
+      { role: "user" as const, content: prompt },
     ],
   });
 
@@ -92,39 +73,59 @@ export async function route(request: RouteRequest): Promise<RouteResult> {
     ? { category: forceCategory as TaskCategory, confidence: 1 }
     : classifyTask(prompt);
 
+  const providerId = config.routing[category] ?? "unknown";
   const provider = getRoutedProvider(config, category);
   const apiKey = process.env[provider.envKey] ?? "";
 
-  // Fallback to claude-sonnet if target provider has no key
-  const useProvider = apiKey
-    ? provider
-    : (config.providers["claude-sonnet"] ?? provider);
-  const resolvedKey = (apiKey || process.env["ANTHROPIC_API_KEY"]) ?? "";
-  const providerId = apiKey ? (config.routing[category] ?? "claude-sonnet") : "claude-sonnet";
+  // No API key → skip, user handles in Claude Code directly
+  if (!apiKey) {
+    const msg = `[router] ${category} → no key for '${providerId}' (${provider.envKey} not set) — handle in Claude Code`;
+    if ((process.env["HMAF_LOG_LEVEL"] ?? "info") !== "silent") console.log(msg);
 
-  let result: { content: string; inputTokens: number; outputTokens: number };
-
-  if (!useProvider.baseUrl) {
-    result = await callAnthropic(useProvider.model, systemPrompt, prompt, maxTokens);
-  } else {
-    const client = openaiCompatClient(useProvider.baseUrl, resolvedKey);
-    result = await callOpenAICompat(client, useProvider.model, systemPrompt, prompt, maxTokens);
+    return {
+      content: "",
+      providerId,
+      model: provider.model,
+      category,
+      confidence,
+      tokensUsed: { input: 0, output: 0 },
+      estimatedCostUSD: 0,
+      skipped: true,
+      skipReason: `${provider.envKey} not set`,
+    };
   }
 
+  if (!provider.baseUrl) {
+    return {
+      content: "",
+      providerId,
+      model: provider.model,
+      category,
+      confidence,
+      tokensUsed: { input: 0, output: 0 },
+      estimatedCostUSD: 0,
+      skipped: true,
+      skipReason: `Provider '${providerId}' has no baseUrl — only OpenAI-compatible providers supported`,
+    };
+  }
+
+  const client = openaiCompatClient(provider.baseUrl, apiKey);
+  const result = await callOpenAICompat(client, provider.model, systemPrompt, prompt, maxTokens);
+
   const estimatedCostUSD =
-    (result.inputTokens / 1_000_000) * useProvider.costPer1MInput +
-    (result.outputTokens / 1_000_000) * useProvider.costPer1MOutput;
+    (result.inputTokens / 1_000_000) * provider.costPer1MInput +
+    (result.outputTokens / 1_000_000) * provider.costPer1MOutput;
 
   if ((process.env["HMAF_LOG_LEVEL"] ?? "info") !== "silent") {
     console.log(
-      `[router] ${category} (${(confidence * 100).toFixed(0)}%) → ${providerId} (${useProvider.model}) ~$${estimatedCostUSD.toFixed(5)}`,
+      `[router] ${category} (${(confidence * 100).toFixed(0)}%) → ${providerId} (${provider.model}) ~$${estimatedCostUSD.toFixed(5)}`,
     );
   }
 
   return {
     content: result.content,
     providerId,
-    model: useProvider.model,
+    model: provider.model,
     category,
     confidence,
     tokensUsed: { input: result.inputTokens, output: result.outputTokens },
@@ -132,13 +133,21 @@ export async function route(request: RouteRequest): Promise<RouteResult> {
   };
 }
 
-// CLI: tsx src/router/model-router.ts "your prompt"
+// CLI: npm run route "your task"
 if (import.meta.url === `file://${process.argv[1]}`) {
   const prompt = process.argv.slice(2).join(" ");
-  if (!prompt) { console.error("Usage: tsx src/router/model-router.ts <prompt>"); process.exit(1); }
+  if (!prompt) {
+    console.error("Usage: npm run route \"<task description>\"");
+    process.exit(1);
+  }
 
   route({ prompt, maxTokens: 2048, stream: false })
     .then((r) => {
+      if (r.skipped) {
+        console.log(`\n[skipped] ${r.skipReason}`);
+        console.log("→ Handle this task directly in Claude Code.");
+        return;
+      }
       console.log("\n--- Response ---\n" + r.content);
       console.log(`\n[cost] $${r.estimatedCostUSD.toFixed(5)} | in=${r.tokensUsed.input} out=${r.tokensUsed.output}`);
     })
