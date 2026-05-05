@@ -37,11 +37,13 @@
 - [x] `src/agents/debate-runner.ts` — round orchestration, intervention point, file output
 - [x] Config: `teams.executor` field trong .hmaf/config.json
 
-### Wave 5: `npx hmaf init` Wizard
-- [ ] CLI wizard với prompts
-- [ ] Template generator (agents, settings, config, env.example)
-- [ ] Stack-based agent template selection
-- [ ] Test install vào bap-bean-book làm pilot
+### Wave 5: `npx hmaf init` Wizard ✅ DONE
+- [x] `src/cli/prompts.ts` — readline helpers (ask, multiSelect, banner)
+- [x] `src/cli/generator.ts` — file generation (config, agents, settings, env, CLAUDE.md)
+- [x] `src/cli/init.ts` — 3-question wizard entrypoint
+- [x] `src/cli/templates/agents/` — 7 stack templates (node/react/ios/python/flutter/devops/general)
+- [x] package.json: `bin.hmaf` + `npm run init`
+- [x] Tested: generates 9 files correctly for node+react+teams+router project
 
 ---
 

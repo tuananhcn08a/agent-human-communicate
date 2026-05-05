@@ -1,14 +1,17 @@
 {
   "name": "hmaf",
   "version": "0.1.0",
-  "description": "Hybrid Multi-Agent Framework for bap-bean-book",
+  "description": "Hybrid Multi-Agent Framework — install into any project",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "hmaf": "./dist/cli/init.js"
+  },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "voice": "tsx src/voice/session.ts",
     "route": "tsx src/router/model-router.ts",
+    "init": "tsx src/cli/init.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

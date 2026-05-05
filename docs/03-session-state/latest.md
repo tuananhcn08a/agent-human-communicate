@@ -1,50 +1,45 @@
 # Session State — Latest
 
-**Session date:** 2026-05-05 (session 3)  
+**Session date:** 2026-05-05 (session 4)  
 **Người làm:** Tuan Anh + Claude Sonnet 4.6
 
 ---
 
-## Completed this session
+## Phase 01 status: COMPLETE ✅
 
-**Wave 2 — Refactor:**
-- `.hmaf/config.json` với `teams.executor` field
-- `src/config/loader.ts` — Zod schema updated
-- Router fully generic
+Tất cả 5 waves đã hoàn thành:
 
-**Wave 3 — Session Mode Selection:**
-- `.claude/commands/hmaf.md` — `/hmaf` slash command
-
-**Wave 4 — Team Agents Protocol:**
-- ADR-005: executor strategy với 2-phase approach
-- `src/agents/executor.ts` — AgentExecutor interface
-- `src/agents/claude-task-executor.ts` — Phase 1: file-based, Claude Code native
-- `src/agents/subprocess-executor.ts` — Phase 2: stub, throws NotImplemented
-- `src/agents/debate-runner.ts` — round orchestration, real-time stream, user intervention
-
-## Next
-
-**Wave 5: `npx hmaf init` Wizard** ← TIẾP THEO
-- [ ] `src/cli/init.ts` — interactive wizard (prompts + file generation)
-- [ ] `src/cli/templates/` — agent templates theo stack
-- [ ] Validate: test install vào bap-bean-book làm pilot
+| Wave | Status |
+|------|--------|
+| Wave 1: Project Setup (docs, ADRs) | ✅ |
+| Wave 2: Generic refactor | ✅ |
+| Wave 3: Session mode selection | ✅ |
+| Wave 4: Team Agents Protocol | ✅ |
+| Wave 5: `npx hmaf init` wizard | ✅ |
 
 ## Codebase state
 
 - TypeScript: ✅ clean 0 errors
-- `src/config/`: ✅ generic loader, Zod validated
-- `src/router/`: ✅ generic, config-driven
-- `src/agents/`: ✅ interface + ClaudeTask executor + debate runner
-- `src/voice/`: ✅ code xong (cần SONIOX_API_KEY để test)
-- `src/gate/`: ✅ xong
-- `.claude/commands/hmaf.md`: ✅ slash command
-- `.hmaf/config.json`: ✅ full config với executor field
+- `src/config/`: ✅ Zod-validated loader
+- `src/router/`: ✅ generic, config-driven routing
+- `src/agents/`: ✅ AgentExecutor interface + ClaudeTask + Subprocess stub + DebateRunner
+- `src/voice/`: ✅ Soniox WebSocket + TTS (cần API key để test thật)
+- `src/gate/`: ✅ smart/strict/auto gate
+- `src/cli/`: ✅ 3-question wizard + 7 stack templates + generator
+- `.claude/commands/hmaf.md`: ✅ /hmaf slash command
+- `.hmaf/config.json`: ✅ default config
 
-## Key decision this session
+## Next phase: Phase 02
 
-ADR-005: AgentExecutor interface từ đầu → switch Claude→Subprocess không cần đổi business logic.
-File-based protocol là transport-agnostic → hoạt động với cả hai executor.
+Cần thiết kế Phase 02 trước khi bắt đầu. Candidates:
 
-## Active mode
+1. **Pilot integration** — Cài HMAF vào bap-bean-book, test thực tế
+2. **SubprocessExecutor** — Phase 2 executor cho portability
+3. **Voice testing** — Lấy Soniox API key, test thật end-to-end
+4. **npm publish** — `npx hmaf init` hoạt động từ registry
 
-Standard (chưa chọn mode cho session này)
+Đề nghị: bắt đầu với Pilot integration — đây là validation quan trọng nhất.
+
+## Open question
+
+- Phase 02 làm gì trước? (cần bạn confirm)
